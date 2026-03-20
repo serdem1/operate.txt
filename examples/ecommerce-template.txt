@@ -1,0 +1,339 @@
+# operate.txt — E-Commerce Store Template
+# https://yourstore.com/operate.txt
+# Version: 0.1
+# Last updated: YYYY-MM-DD
+#
+# Template for e-commerce websites. Fill in your details,
+# remove sections that don't apply, and publish at your domain root.
+
+meta:
+  site: Your Store Name
+  url: https://yourstore.com
+  description: One sentence — what your store sells
+  language: en
+  contact: support@yourstore.com
+  agent_permissions:
+    allowed:
+      - browse
+      - search_products
+      - view_product_details
+      - add_to_cart
+      - view_cart
+      - apply_promo_code
+      - view_order_status
+    requires_confirmation:
+      - checkout (requires user payment details)
+      - remove_from_cart
+      - cancel_order
+      - change_shipping_address
+      - subscribe_to_newsletter
+    forbidden:
+      - bulk_scraping
+      - automated_checkout_without_user
+      - automated_account_creation
+      - price_monitoring_at_scale
+
+authentication:
+  method: email + password OR Google/Apple OAuth
+  session_duration: 30 days with remember me, otherwise session-only
+  expired_behavior: redirect to /login, cart preserved
+  state_persistence: cart survives session expiry (stored server-side)
+
+# ─────────────────────────────────────────────
+# SCREENS
+# ─────────────────────────────────────────────
+
+screens:
+  - id: homepage
+    path: /
+    description: Landing page with featured products, promotions, and category navigation.
+    key_elements:
+      - Search bar (top center)
+      - Category navigation (top menu or sidebar)
+      - Featured products carousel
+      - Promotional banners (may link to sale pages)
+
+  - id: product_listing
+    path: /collections/{category} or /search?q={query}
+    description: Grid of products, filterable and sortable.
+    key_elements:
+      - Filter sidebar (price, size, color, brand, etc.)
+      - Sort dropdown (price low-high, newest, bestselling, etc.)
+      - Product cards with image, title, price, rating
+      - Pagination or infinite scroll
+    notes:
+      - Filters may use AJAX — page doesn't fully reload
+      - "X results" count updates after filter change
+
+  - id: product_detail
+    path: /products/{slug}
+    description: Individual product page with full details.
+    key_elements:
+      - Product images (gallery, click to zoom)
+      - Price (may show original + sale price)
+      - Variant selectors (size, color, etc.)
+      - "Add to Cart" button
+      - Quantity selector
+      - Product description tabs (Description, Specifications, Reviews)
+      - "In Stock" / "Out of Stock" indicator
+    notes:
+      - "Add to Cart" button is DISABLED when required variant not selected
+      - Out of stock items show "Notify Me" instead of "Add to Cart"
+
+  - id: cart
+    path: /cart
+    description: Shopping cart with line items, quantities, and order summary.
+    key_elements:
+      - Line items with quantity adjusters (+/-)
+      - Remove item button (usually X or trash icon)
+      - Promo code input (often hidden behind "Have a code?" link)
+      - Order summary (subtotal, shipping estimate, tax, total)
+      - "Proceed to Checkout" button
+
+  - id: checkout
+    path: /checkout
+    description: Multi-step or single-page checkout flow.
+    key_elements:
+      - Shipping address form
+      - Shipping method selection
+      - Payment method selection
+      - Order review
+      - "Place Order" / "Complete Purchase" button
+    notes:
+      - STOP before clicking "Place Order" — this is irreversible and charges the user
+
+  - id: order_confirmation
+    path: /orders/{id}/confirmation
+    description: Post-purchase confirmation with order details and tracking info.
+
+  - id: account
+    path: /account
+    description: User account dashboard with order history, addresses, and preferences.
+
+# ─────────────────────────────────────────────
+# FLOWS
+# ─────────────────────────────────────────────
+
+flows:
+  - name: Purchase a Product
+    description: Find and buy a product from search to order confirmation.
+    steps:
+      - step: 1
+        action: Search for product using search bar (top of page)
+        result: Product listing page with results
+      - step: 2
+        action: Click product card to open product detail page
+      - step: 3
+        action: Select required variants (size, color, etc.)
+        notes: "Add to Cart" button stays disabled until all required variants selected
+      - step: 4
+        action: Set quantity (default is 1)
+      - step: 5
+        action: Click "Add to Cart"
+        result: Item added, usually shows cart drawer or notification
+      - step: 6
+        action: Click cart icon (top right) or "View Cart" to review
+      - step: 7
+        action: Review cart — verify items, quantities, prices
+      - step: 8
+        action: Click "Proceed to Checkout"
+        important: STOP HERE — checkout requires user to enter payment details personally
+
+  - name: Apply Promo Code
+    description: Apply a discount code to the cart.
+    steps:
+      - step: 1
+        action: Navigate to cart (/cart)
+      - step: 2
+        action: Look for "Have a promo code?" or "Discount code" link/field
+        notes: Often collapsed — click the link to reveal the input field
+      - step: 3
+        action: Enter code in the text field
+      - step: 4
+        action: Click "Apply"
+        result: Discount appears in order summary if valid, error message if invalid
+      - step: 5
+        action: Verify discount is reflected in the total
+
+  - name: Check Order Status
+    description: View status of an existing order.
+    steps:
+      - step: 1
+        action: Navigate to /account or /account/orders
+      - step: 2
+        action: Find the order by date or order number
+      - step: 3
+        action: Click order to view details and tracking
+
+# ─────────────────────────────────────────────
+# ASYNC ACTIONS
+# ─────────────────────────────────────────────
+
+async_actions:
+  - id: search
+    trigger: typing in search bar or pressing Enter
+    expected_duration: 1-3 seconds
+    result_location: same page (autocomplete dropdown) or /search results page
+    progress_indicator: spinner in search bar
+    safe_to_retry: true
+
+  - id: add_to_cart
+    trigger: "Add to Cart" button
+    expected_duration: 1-5 seconds
+    result_location: cart icon badge updates, cart drawer may slide open
+    progress_indicator: button shows spinner or changes to "Adding..."
+    success_signal: button changes to "Added!" or cart count increases
+    failure_signal: error toast/notification
+    safe_to_retry: true — but may add duplicate items
+
+  - id: apply_promo
+    trigger: "Apply" button on promo code field
+    expected_duration: 2-5 seconds
+    result_location: order summary section updates
+    success_signal: discount line item appears in summary
+    failure_signal: red error text below promo field ("Invalid code" or "Expired")
+    safe_to_retry: true
+
+  - id: checkout_processing
+    trigger: "Place Order" / "Complete Purchase" button
+    expected_duration: 5-30 seconds
+    result_location: redirects to order confirmation page
+    progress_indicator: full-page spinner or overlay with "Processing your order..."
+    success_signal: redirect to /orders/{id}/confirmation
+    failure_signal: error message on checkout page (payment declined, etc.)
+    safe_to_leave: false — DO NOT navigate away, may cause duplicate charges
+    safe_to_retry: false — wait for result, may cause double charge
+
+# ─────────────────────────────────────────────
+# STATES
+# ─────────────────────────────────────────────
+
+states:
+  loading:
+    - id: checkout_processing
+      appearance: full-page overlay with spinner, "Processing your order..."
+      meaning: payment is being processed
+      expected_duration: 5-30 seconds
+      action: WAIT — do NOT refresh or navigate away, risk of duplicate charges
+      stuck_threshold: 60 seconds
+      recovery_if_stuck: check email for order confirmation before retrying
+
+    - id: search_loading
+      appearance: spinner in search bar or skeleton product cards
+      meaning: search results loading
+      expected_duration: 1-3 seconds
+      action: wait
+
+  error:
+    - id: payment_declined
+      appearance: red error banner on checkout page
+      action: user needs to update payment details — agent cannot help with this
+
+    - id: out_of_stock_at_checkout
+      appearance: error message mentioning stock, item may be removed from cart
+      action: return to cart, verify items, choose alternatives
+
+    - id: invalid_promo
+      appearance: red text below promo code field
+      action: verify code spelling, check expiration, try different code
+
+  empty:
+    - id: empty_cart
+      appearance: "Your cart is empty" with "Continue Shopping" link
+      meaning: no items in cart — normal state
+      action: search for products or browse categories
+
+    - id: no_search_results
+      appearance: "No results for [query]" with suggestions
+      meaning: search didn't match any products
+      action: try broader search terms or browse categories
+
+# ─────────────────────────────────────────────
+# FORMS
+# ─────────────────────────────────────────────
+
+forms:
+  - id: shipping_address
+    path: /checkout
+    fields:
+      - name: email
+        required: true
+        type: email
+      - name: first_name
+        required: true
+        type: text
+      - name: last_name
+        required: true
+        type: text
+      - name: address_line_1
+        required: true
+        type: text
+      - name: address_line_2
+        required: false
+        type: text
+      - name: city
+        required: true
+        type: text
+      - name: state_province
+        required: true
+        type: dropdown
+        depends_on: country
+      - name: postal_code
+        required: true
+        type: text
+      - name: country
+        required: true
+        type: dropdown
+    field_dependencies:
+      - state_province depends_on country — options change based on country
+      - postal_code format varies by country
+    sequence: email → first_name → last_name → address_line_1 → city → country → state_province → postal_code
+
+# ─────────────────────────────────────────────
+# IRREVERSIBLE ACTIONS
+# ─────────────────────────────────────────────
+
+irreversible_actions:
+  - action: "Place Order" / "Complete Purchase"
+    consequence: charges payment method, creates order, begins fulfillment
+    confirmation_ui: order review step before final button
+    undo: must contact support for cancellation (time-limited)
+
+  - action: "Remove" on cart item
+    consequence: item removed from cart
+    confirmation_ui: none on most stores
+    undo: add item again (but variant/size selection may need re-doing)
+
+# ─────────────────────────────────────────────
+# ERROR RECOVERY
+# ─────────────────────────────────────────────
+
+error_recovery:
+  - symptom: checkout page shows "Payment declined"
+    likely_cause: insufficient funds, wrong card details, bank block
+    recovery: agent cannot fix — user must update payment method
+
+  - symptom: "Item no longer available" during checkout
+    likely_cause: someone else bought the last item
+    recovery: return to cart, remove unavailable item, find alternative
+
+  - symptom: page shows 404 after clicking product
+    likely_cause: product was removed or URL changed
+    recovery: search for product by name instead
+
+  - symptom: promo code shows "Already used"
+    likely_cause: single-use code already applied to previous order
+    recovery: try a different code or proceed without discount
+
+# ─────────────────────────────────────────────
+# AGENT TIPS
+# ─────────────────────────────────────────────
+
+agent_tips:
+  - tip: "Always verify the correct variant (size/color) is selected before adding to cart — the default may not be what the user wants."
+  - tip: "Promo code fields are often hidden behind a clickable link — look for 'Have a code?', 'Discount code', or 'Coupon' text."
+  - tip: "Cart quantities can usually be changed with +/- buttons or by editing the number directly."
+  - tip: "Sale prices may show as 'Was $X, Now $Y' or with strikethrough on the original price."
+  - tip: "NEVER enter payment information — always stop at checkout and ask the user to complete payment."
+  - tip: "If the site asks for a CAPTCHA, stop and tell the user — agents should not attempt to solve these."
+  - tip: "Free shipping thresholds are usually shown in a banner — check if adding more items would qualify."
