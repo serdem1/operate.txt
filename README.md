@@ -3,7 +3,7 @@
 
 **Version 0.2 — March 2026**
 *Originated by BrandyBee*
-*Contact: billing@brandybee.ai*
+*Contact: [Serhat Erdem](https://www.linkedin.com/in/serhat-erdem-946254b5/) serhat@brandybee.ai*
 
 ---
 
@@ -46,7 +46,7 @@ The format is the same across all of these. The sections adapt to the system.
 
 ## How This Was Discovered
 
-This idea came from real work. The team at BrandyBee — an AI growth platform for e-commerce brands — was using Claude to navigate and audit their own product. Not as a thought experiment. As an actual workflow: have Claude act like a new employee, find the bugs, map every screen, document every flow.
+This idea came from real work. The team at BrandyBee — an AI growth platform for e-commerce brands — was using Claude to navigate their product the way a user's AI agent would. The goal: see what happens when an AI agent tries to operate your product on behalf of a real user. Find the friction. Document every flow. Map the places where an agent would take a wrong action, miss a loading state, or trigger something irreversible.
 
 It worked well. Claude found issues the team had stopped seeing.
 
@@ -862,4 +862,4 @@ This is an open standard. We want your input.
 ---
 
 *operate.txt v0.2 — March 2026 — Open for community development*
-*Origin: [BrandyBee](https://brandybee.ai) — billing@brandybee.ai*
+*Origin: [BrandyBee](https://brandybee.ai) — [Serhat Erdem](https://www.linkedin.com/in/serhat-erdem-946254b5/) — serhat@brandybee.ai*
