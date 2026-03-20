@@ -1,0 +1,184 @@
+# operate.txt Schema Specification
+# Version: 0.2
+# Date: 2026-03-21
+#
+# This file defines the structure of an operate.txt file.
+# All sections are optional except `meta`. Start with what matters most.
+#
+# File location: yourdomain.com/operate.txt
+# Format: YAML
+# Encoding: UTF-8
+
+# ═══════════════════════════════════════════════
+# SCHEMA DEFINITION
+# ═══════════════════════════════════════════════
+
+schema:
+  version: "0.2"
+  file_name: operate.txt
+  file_location: domain root (e.g., https://example.com/operate.txt)
+  format: YAML
+  encoding: UTF-8
+
+# ─────────────────────────────────────────────
+# meta (REQUIRED)
+# ─────────────────────────────────────────────
+# Identity and permissions. The only required section.
+
+meta:
+  site:                    # string, required — product/site name
+  url:                     # string, required — primary URL
+  description:             # string, required — one-sentence description
+  language:                # string — primary language(s), comma-separated ISO codes
+  contact:                 # string — contact email for agent-related issues
+  agent_permissions:
+    allowed:               # list of strings — actions agents can freely take
+    requires_confirmation: # list of strings — actions requiring user approval
+    forbidden:             # list of strings — actions agents must never attempt
+
+# ─────────────────────────────────────────────
+# authentication (optional)
+# ─────────────────────────────────────────────
+
+authentication:
+  method:                  # string — auth method(s) (e.g., "email + password OR OAuth")
+  session_type:            # string — session mechanism (e.g., "JWT", "cookie-based")
+  session_duration:        # string — how long sessions last
+  expired_behavior:        # string — what happens on expiry (redirect, modal, etc.)
+  state_persistence:       # string — does in-progress work survive session expiry?
+  logout_clears:           # string — what gets cleared on logout
+
+# ─────────────────────────────────────────────
+# screens (optional)
+# ─────────────────────────────────────────────
+# Inventory of distinct screens/views.
+
+screens:
+  - id:                    # string, required — unique identifier
+    path:                  # string, required — URL path
+    description:           # string, required — what this screen shows
+    key_elements:          # list of strings — interactive elements and what they do
+    notes:                 # list of strings — non-obvious behavior
+
+# ─────────────────────────────────────────────
+# components (optional)
+# ─────────────────────────────────────────────
+# Shared UI elements that appear across multiple screens.
+
+components:
+  - name:                  # string, required — component name
+    location:              # string — where it appears
+    selector_hint:         # string — CSS selector or data attribute to find it
+    description:           # string, required — what it does
+    important:             # string — critical behavior to know about
+
+# ─────────────────────────────────────────────
+# flows (optional, strongly recommended)
+# ─────────────────────────────────────────────
+# Step-by-step paths for common tasks.
+
+flows:
+  - name:                  # string, required — task name
+    description:           # string — what this flow accomplishes
+    total_duration:        # string — estimated time including waits
+    steps:
+      - step:              # integer, required — step number
+        action:            # string, required — what to do
+        result:            # string — what happens after this step
+        notes:             # string — non-obvious details
+        important:         # string — warnings about irreversible/costly actions
+        see:               # string — reference to another section (e.g., async_actions.id)
+
+# ─────────────────────────────────────────────
+# async_actions (optional, strongly recommended)
+# ─────────────────────────────────────────────
+# Background processes triggered by user actions.
+
+async_actions:
+  - id:                    # string, required — unique identifier
+    trigger:               # string, required — what button/action starts it
+    expected_duration:     # string, required — typical time range
+    result_location:       # string — where the result appears
+    progress_indicator:    # string — what the user sees while waiting
+    success_signal:        # string — how to know it completed successfully
+    failure_signal:        # string — how to know it failed
+    safe_to_leave:         # boolean — can user navigate away?
+    safe_to_retry:         # boolean or string — can action be repeated safely?
+    stages:                # list of strings — ordered stages the process goes through
+    notes:                 # string — additional context
+
+# ─────────────────────────────────────────────
+# states (optional)
+# ─────────────────────────────────────────────
+# Loading, error, and empty states that agents commonly misinterpret.
+
+states:
+  loading:
+    - id:                  # string, required
+      appearance:          # string, required — what it looks like
+      meaning:             # string, required — what is actually happening
+      expected_duration:   # string — how long this typically lasts
+      stuck_threshold:     # string — when to consider it stuck
+      action:              # string — what the agent should do
+      recovery_if_stuck:   # string — what to do if stuck
+
+  error:
+    - id:                  # string, required
+      appearance:          # string, required — what it looks like
+      meaning:             # string — what went wrong
+      action:              # string, required — how to recover
+
+  empty:
+    - id:                  # string, required
+      appearance:          # string, required — what it looks like
+      meaning:             # string — why it's empty
+      action:              # string — what to do
+
+# ─────────────────────────────────────────────
+# forms (optional)
+# ─────────────────────────────────────────────
+# Form fields, dependencies, and fill sequences.
+
+forms:
+  - id:                    # string, required
+    path:                  # string — URL where this form appears
+    fields:
+      - name:              # string, required — field identifier
+        label:             # string — user-visible label
+        required:          # boolean
+        type:              # string — input type (text, dropdown, checkbox, etc.)
+        depends_on:        # string — field that must be filled first
+        description:       # string — what this field is for
+        format:            # string — expected format
+    field_dependencies:    # list of strings — human-readable dependency descriptions
+    sequence:              # string — recommended fill order
+    notes:                 # string — additional context
+
+# ─────────────────────────────────────────────
+# irreversible_actions (optional, strongly recommended)
+# ─────────────────────────────────────────────
+# Actions that cannot be undone.
+
+irreversible_actions:
+  - action:                # string, required — what the user does
+    consequence:           # string, required — what happens
+    confirmation_ui:       # string — what safeguard exists (or "none")
+    undo:                  # string — how to undo, or "not possible"
+
+# ─────────────────────────────────────────────
+# error_recovery (optional)
+# ─────────────────────────────────────────────
+# Common problems and how to fix them.
+
+error_recovery:
+  - symptom:               # string, required — what the agent observes
+    likely_cause:          # string — probable root cause
+    recovery:              # string, required — step-by-step fix
+
+# ─────────────────────────────────────────────
+# agent_tips (optional)
+# ─────────────────────────────────────────────
+# Free-form practical notes.
+
+agent_tips:
+  - tip:                   # string — practical advice that doesn't fit elsewhere
