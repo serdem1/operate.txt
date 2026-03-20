@@ -1,0 +1,542 @@
+# operate.txt — SaaS Dashboard Template
+# https://app.yourproduct.com/operate.txt
+# Version: 0.1
+# Last updated: YYYY-MM-DD
+#
+# Template for SaaS products with dashboards, settings,
+# team management, and data views. Fill in your details,
+# remove sections that don't apply, and publish at your domain root.
+
+meta:
+  site: Your SaaS Product
+  url: https://app.yourproduct.com
+  description: One sentence — what your product does
+  language: en
+  contact: support@yourproduct.com
+  agent_permissions:
+    allowed:
+      - browse
+      - search
+      - view_dashboards
+      - view_reports
+      - export_data
+      - create_items
+      - edit_items
+    requires_confirmation:
+      - delete_items
+      - change_plan
+      - invite_team_member
+      - remove_team_member
+      - connect_integration
+      - export_all_data
+      - change_account_settings
+    forbidden:
+      - bulk_scraping
+      - automated_account_creation
+      - delete_account
+      - change_billing_info
+      - modify_security_settings
+
+authentication:
+  method: email + password OR SSO (Google, Microsoft)
+  session_duration: 24 hours, extended with activity
+  mfa: may be required — agent cannot complete MFA, must ask user
+  expired_behavior: redirect to /login with "session expired" message
+  state_persistence: unsaved work is lost on session expiry
+  notes: SSO login may open a popup window — agent should wait for redirect back
+
+# ─────────────────────────────────────────────
+# SCREENS
+# ─────────────────────────────────────────────
+
+screens:
+  - id: login
+    path: /login
+    description: Sign in page with email/password and SSO options.
+    key_elements:
+      - Email input
+      - Password input
+      - "Sign In" button
+      - "Continue with Google" / "Continue with Microsoft" buttons
+      - "Forgot password?" link
+    notes:
+      - MFA screen may appear after password — shows 6-digit code input
+      - Agent cannot complete MFA — stop and ask user
+
+  - id: dashboard
+    path: /dashboard
+    description: Main overview with key metrics, charts, and recent activity.
+    key_elements:
+      - Metric cards (KPIs) — read-only summary numbers
+      - Charts — interactive, hover for tooltips, click to drill down
+      - Date range picker (top right) — changes all dashboard data
+      - Recent activity feed — scrollable list of latest actions
+    notes:
+      - Dashboard data loads asynchronously — charts may appear one at a time
+      - Metric cards show skeleton loaders while loading, not errors
+
+  - id: workspace_switcher
+    path: /dashboard (modal overlay)
+    description: Switch between workspaces or organizations.
+    notes:
+      - Switching workspace reloads ALL data — treat like a full page change
+      - Current workspace name shown in sidebar header
+
+  - id: items_list
+    path: /items or /projects or /contacts (varies by product)
+    description: Paginated or infinite-scroll list of primary data objects.
+    key_elements:
+      - Search bar — filters list in real time
+      - Filter dropdowns (status, assignee, date, tags)
+      - Sort options (newest, oldest, name, priority)
+      - Bulk selection checkboxes
+      - "New Item" / "Create" button
+      - Pagination or "Load more" at bottom
+    notes:
+      - Filters are additive — each additional filter narrows results
+      - Clearing all filters shows all items
+      - Bulk actions toolbar appears when items are selected
+
+  - id: item_detail
+    path: /items/{id}
+    description: Single item view with full details, editable fields, and activity log.
+    key_elements:
+      - Editable title (click to edit in place)
+      - Field editors (status, assignee, priority, dates, tags, custom fields)
+      - Description/notes area (rich text editor)
+      - Activity log / comment thread
+      - "Delete" button (usually in menu or bottom of page)
+    notes:
+      - Changes auto-save after a short delay — no "Save" button
+      - Look for "Saved" or checkmark indicator to confirm save
+      - Unsaved changes may show "Unsaved" or a dot indicator
+
+  - id: reports
+    path: /reports or /analytics
+    description: Data reports and analytics with charts and export options.
+    key_elements:
+      - Report type selector or tabs
+      - Date range picker
+      - Charts and data tables
+      - "Export" button (CSV, PDF, or both)
+    notes:
+      - Large reports may take 10-30 seconds to generate
+      - Export may trigger a download or email delivery
+
+  - id: settings
+    path: /settings
+    description: Account and workspace settings, organized by category.
+    key_elements:
+      - Settings navigation (sidebar or tabs) — General, Team, Billing, Integrations, etc.
+      - Form fields for each setting category
+      - "Save" or "Update" buttons per section
+    notes:
+      - Some settings require confirmation modal (especially destructive ones)
+      - Billing section may redirect to external payment provider
+
+  - id: team_management
+    path: /settings/team or /members
+    description: Team member list with roles, invite functionality, and access management.
+    key_elements:
+      - Member list with name, email, role, status
+      - "Invite" button — opens email input modal
+      - Role dropdown per member (Admin, Editor, Viewer, etc.)
+      - Remove/deactivate button per member
+
+  - id: integrations
+    path: /settings/integrations
+    description: Third-party service connections (Slack, Google, Zapier, etc.)
+    key_elements:
+      - Integration cards showing connected/disconnected status
+      - "Connect" buttons — typically open OAuth popup
+      - "Disconnect" buttons — may require confirmation
+    notes:
+      - OAuth popups may be blocked by browser — agent should note if popup doesn't appear
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+
+components:
+  - name: Sidebar Navigation
+    location: left side, persistent
+    description: Main navigation to all sections. May be collapsible.
+    important: Workspace name at top indicates current context.
+
+  - name: Date Range Picker
+    location: top right on dashboard and report pages
+    description: Controls the time period for all displayed data. Common presets (7d, 30d, 90d, Custom).
+    important: Changing date range reloads all charts and metrics on the page.
+
+  - name: Command Palette / Quick Search
+    location: triggered by keyboard shortcut (usually Cmd+K or Ctrl+K)
+    description: Global search and quick navigation. Type to search items, pages, or actions.
+
+  - name: Toast Notifications
+    location: top right or bottom right, temporary
+    description: Success/error messages that appear briefly after actions. Auto-dismiss after 3-5 seconds.
+    important: Read these — they confirm whether an action succeeded or failed.
+
+  - name: Confirmation Modal
+    description: Appears before destructive actions. Always contains descriptive text and Confirm/Cancel buttons.
+
+# ─────────────────────────────────────────────
+# FLOWS
+# ─────────────────────────────────────────────
+
+flows:
+  - name: Create a New Item
+    description: Create a new data object (project, contact, task, etc.)
+    steps:
+      - step: 1
+        action: Click "New Item" or "Create" button (top of list page or in sidebar)
+        result: Creation form or modal opens
+      - step: 2
+        action: Fill in required fields (name/title is usually the minimum)
+        notes: Required fields are marked with * or highlighted in red if skipped
+      - step: 3
+        action: Fill optional fields as needed (assignee, priority, tags, dates)
+      - step: 4
+        action: Click "Create" / "Save" / "Add"
+        result: Item created, redirects to item detail page or back to list
+      - step: 5
+        action: Verify creation — item appears in list or toast notification confirms
+
+  - name: Export a Report
+    description: Generate and download a data export.
+    total_duration: 5-60 seconds depending on data size
+    steps:
+      - step: 1
+        action: Navigate to /reports or /analytics
+      - step: 2
+        action: Select report type and date range
+        see: async_actions.report_generation
+      - step: 3
+        action: Wait for report to load (charts and tables populate)
+      - step: 4
+        action: Click "Export" button
+      - step: 5
+        action: Select format (CSV or PDF)
+        see: async_actions.data_export
+      - step: 6
+        action: Wait for export to generate
+        result: File downloads automatically, or link sent via email for large exports
+
+  - name: Invite a Team Member
+    description: Add a new user to the workspace.
+    steps:
+      - step: 1
+        action: Navigate to /settings/team or /members
+      - step: 2
+        action: Click "Invite" or "Add Member" button
+        result: Modal with email input and role selector opens
+      - step: 3
+        action: Enter email address
+      - step: 4
+        action: Select role (Admin, Editor, Viewer, etc.)
+        important: Admin role grants full access including billing and settings
+      - step: 5
+        action: Click "Send Invite"
+        result: Invitation email sent, member appears in list as "Pending"
+
+  - name: Connect an Integration
+    description: Link a third-party service.
+    steps:
+      - step: 1
+        action: Navigate to /settings/integrations
+      - step: 2
+        action: Find the integration card
+      - step: 3
+        action: Click "Connect"
+        important: This typically opens an OAuth popup window
+        notes: If popup doesn't appear, browser may be blocking it — agent cannot resolve this
+      - step: 4
+        action: STOP — user must complete OAuth authorization in the popup themselves
+      - step: 5
+        action: After user completes OAuth, integration card updates to "Connected"
+
+  - name: Change Workspace Settings
+    description: Update workspace name, defaults, or configuration.
+    steps:
+      - step: 1
+        action: Navigate to /settings/general (or /settings)
+      - step: 2
+        action: Modify desired fields
+      - step: 3
+        action: Click "Save" or "Update"
+        result: Toast notification confirms changes saved
+
+# ─────────────────────────────────────────────
+# ASYNC ACTIONS
+# ─────────────────────────────────────────────
+
+async_actions:
+  - id: dashboard_load
+    trigger: navigating to /dashboard or changing date range
+    expected_duration: 2-10 seconds
+    result_location: same page — charts and metric cards populate individually
+    progress_indicator: skeleton loaders on each card/chart
+    success_signal: all skeleton loaders replaced with real data
+    failure_signal: card shows "Failed to load" or error icon
+    safe_to_leave: true
+    safe_to_retry: true — refresh page
+    notes: Charts load independently — some may appear before others. This is normal.
+
+  - id: report_generation
+    trigger: selecting report type or changing date range on reports page
+    expected_duration: 5-30 seconds
+    result_location: same page — charts and tables populate
+    progress_indicator: spinner or "Generating report..." message
+    success_signal: data appears in charts and tables
+    failure_signal: "Report failed" error message
+    safe_to_leave: true
+    safe_to_retry: true
+
+  - id: data_export
+    trigger: clicking "Export" and selecting format
+    expected_duration: 5-60 seconds depending on data size
+    result_location: browser download or email notification
+    progress_indicator: "Preparing export..." modal or toast
+    success_signal: file download starts or "Export sent to email" toast
+    failure_signal: "Export failed" error toast
+    safe_to_leave: true — export continues server-side
+    safe_to_retry: true
+    notes: Large exports (>10,000 rows) may be delivered via email instead of direct download
+
+  - id: search
+    trigger: typing in search bar or command palette
+    expected_duration: 0.5-3 seconds
+    result_location: dropdown below search bar or command palette results
+    progress_indicator: spinner in search input
+    safe_to_retry: true
+
+  - id: auto_save
+    trigger: editing any field on item detail page
+    expected_duration: 1-3 seconds after last keystroke
+    result_location: save indicator near title (checkmark, "Saved", or "Saving...")
+    progress_indicator: "Saving..." text or spinner near title
+    success_signal: "Saved" text or checkmark appears
+    failure_signal: "Save failed" text — retry or refresh
+    safe_to_leave: false — wait for "Saved" indicator before navigating away
+    safe_to_retry: true — make any edit to re-trigger save
+
+  - id: bulk_action
+    trigger: selecting multiple items and applying an action (delete, tag, assign, etc.)
+    expected_duration: 2-15 seconds depending on count
+    result_location: same page — items update in list
+    progress_indicator: progress bar or "Processing X items..."
+    success_signal: "X items updated" toast notification
+    failure_signal: "Some items failed" warning with details
+    safe_to_leave: true — action continues server-side
+    safe_to_retry: false — may cause duplicate actions
+
+# ─────────────────────────────────────────────
+# STATES
+# ─────────────────────────────────────────────
+
+states:
+  loading:
+    - id: dashboard_loading
+      appearance: skeleton loader cards (grey animated rectangles where charts will be)
+      meaning: dashboard data loading from API
+      expected_duration: 2-10 seconds
+      action: wait — cards fill in individually as data arrives
+      recovery_if_stuck: refresh page after 30 seconds
+
+    - id: list_loading
+      appearance: skeleton rows or spinner in content area
+      meaning: list data loading
+      expected_duration: 1-5 seconds
+      action: wait
+
+    - id: saving
+      appearance: "Saving..." text near title or spinner in toolbar
+      meaning: auto-save in progress
+      expected_duration: 1-3 seconds
+      action: wait — do not navigate away until "Saved" appears
+
+    - id: export_preparing
+      appearance: modal or toast saying "Preparing export..."
+      meaning: server generating file
+      expected_duration: 5-60 seconds
+      action: wait — do not close modal
+
+  error:
+    - id: api_error
+      appearance: red toast notification with error message
+      action: retry the action or refresh page
+
+    - id: permission_denied
+      appearance: "You don't have permission" message or empty page with lock icon
+      action: agent cannot resolve — user needs different role or access
+
+    - id: save_failed
+      appearance: "Save failed" text near title, field may show red outline
+      action: retry by making any edit, or refresh and re-enter changes
+
+    - id: integration_auth_failed
+      appearance: integration card shows "Reconnect" instead of "Connected"
+      action: user must re-authenticate — agent cannot complete OAuth
+
+  empty:
+    - id: no_items
+      appearance: empty list with illustration and "Create your first [item]" prompt
+      meaning: no data yet — normal for new workspaces
+      action: click the create/add button
+
+    - id: no_results
+      appearance: "No results found" in list or search
+      meaning: filters or search too narrow
+      action: clear filters or broaden search terms
+
+    - id: no_reports
+      appearance: reports page with "Select a report type" prompt
+      meaning: no report selected yet
+      action: choose a report type from the selector
+
+# ─────────────────────────────────────────────
+# FORMS
+# ─────────────────────────────────────────────
+
+forms:
+  - id: create_item
+    path: /items/new or modal overlay
+    fields:
+      - name: title
+        label: "Name" or "Title"
+        required: true
+        type: text
+      - name: description
+        label: "Description"
+        required: false
+        type: rich text editor
+      - name: assignee
+        label: "Assignee" or "Owner"
+        required: false
+        type: dropdown (team members)
+      - name: status
+        label: "Status"
+        required: false
+        type: dropdown
+        notes: default is usually "Not Started" or "Open"
+      - name: priority
+        label: "Priority"
+        required: false
+        type: dropdown (Low, Medium, High, Urgent)
+      - name: due_date
+        label: "Due Date"
+        required: false
+        type: date picker
+      - name: tags
+        label: "Tags" or "Labels"
+        required: false
+        type: multi-select or tag input
+    notes: Only title is typically required — all other fields can be set after creation
+
+  - id: invite_member
+    path: /settings/team (modal)
+    fields:
+      - name: email
+        label: "Email Address"
+        required: true
+        type: email
+        notes: must be a valid email — validation on blur
+      - name: role
+        label: "Role"
+        required: true
+        type: dropdown
+        notes: default is usually "Viewer" or "Member" (least privilege)
+    field_dependencies:
+      - available roles may depend on current plan (free plans may have fewer role options)
+
+  - id: settings_general
+    path: /settings/general
+    fields:
+      - name: workspace_name
+        label: "Workspace Name"
+        required: true
+        type: text
+      - name: timezone
+        label: "Timezone"
+        required: true
+        type: dropdown
+      - name: language
+        label: "Language"
+        required: false
+        type: dropdown
+    notes: each section has its own "Save" button — changes don't auto-save in settings
+
+# ─────────────────────────────────────────────
+# IRREVERSIBLE ACTIONS
+# ─────────────────────────────────────────────
+
+irreversible_actions:
+  - action: Delete item
+    consequence: permanently removes item and all associated data (comments, attachments)
+    confirmation_ui: confirmation modal with item name
+    undo: some products offer 30-day trash, others permanent delete
+
+  - action: Remove team member
+    consequence: revokes access immediately, removes from all assignments
+    confirmation_ui: confirmation modal
+    undo: can re-invite but previous assignments/permissions are lost
+
+  - action: Disconnect integration
+    consequence: removes connection, may delete synced data
+    confirmation_ui: confirmation modal
+    undo: can reconnect but historical sync data may be lost
+
+  - action: Delete workspace
+    consequence: permanently deletes workspace and ALL data for ALL members
+    confirmation_ui: type workspace name to confirm
+    undo: not possible
+
+  - action: Downgrade plan
+    consequence: may disable features, remove team members over limit, delete data over storage limit
+    confirmation_ui: summary of what will be affected
+    undo: can upgrade again but lost data is not recovered
+
+# ─────────────────────────────────────────────
+# ERROR RECOVERY
+# ─────────────────────────────────────────────
+
+error_recovery:
+  - symptom: dashboard shows all skeleton loaders for >30 seconds
+    likely_cause: API timeout or network issue
+    recovery: refresh page. If persistent, check status page.
+
+  - symptom: "Save failed" appears repeatedly
+    likely_cause: network issue or session expired
+    recovery: check if still logged in. Copy unsaved text before refreshing.
+
+  - symptom: export never downloads
+    likely_cause: large dataset, export sent to email instead
+    recovery: check email inbox. If not there after 10 minutes, retry with smaller date range.
+
+  - symptom: "You don't have permission" on a page that previously worked
+    likely_cause: role changed by admin, or workspace was switched
+    recovery: verify correct workspace. Contact workspace admin for access.
+
+  - symptom: integration shows "Reconnect" despite being previously connected
+    likely_cause: OAuth token expired
+    recovery: click "Reconnect" — user must complete OAuth flow again.
+
+  - symptom: search returns no results for items that should exist
+    likely_cause: active filters narrowing results
+    recovery: clear all filters before searching. Check if correct workspace is selected.
+
+# ─────────────────────────────────────────────
+# AGENT TIPS
+# ─────────────────────────────────────────────
+
+agent_tips:
+  - tip: "Dashboard metrics use skeleton loaders while loading — these are NOT errors. Wait for data to populate."
+  - tip: "Most SaaS apps auto-save on item detail pages — look for 'Saved' indicator, don't look for a Save button."
+  - tip: "Cmd+K or Ctrl+K often opens a command palette for quick navigation — faster than clicking through menus."
+  - tip: "Date range picker affects ALL data on the current page. Check it first if numbers look wrong."
+  - tip: "Workspace/org switcher changes ALL data context. Always verify you're in the right workspace."
+  - tip: "OAuth popups for integrations may be browser-blocked. If 'Connect' doesn't seem to work, stop and tell the user."
+  - tip: "Settings pages usually have per-section Save buttons — changes aren't saved until you click Save."
+  - tip: "Bulk actions on selected items may take time. Watch for the progress indicator or completion toast."
+  - tip: "MFA/2FA prompts cannot be completed by agents. Stop and ask the user."
+  - tip: "'Admin' role grants full access including billing. Default to least-privilege role when inviting members."
