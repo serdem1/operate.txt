@@ -1,0 +1,433 @@
+# operate.txt — BrandyBee
+# https://app.brandybee.ai/operate.txt
+# Version: 0.1
+# Last updated: 2026-03-21
+#
+# This is a real operate.txt written from actual experience
+# operating BrandyBee with Claude. Every entry was discovered
+# by watching an AI agent navigate the product and documenting
+# where it struggled.
+
+meta:
+  site: BrandyBee
+  url: https://app.brandybee.ai
+  description: AI-powered growth and marketing platform for e-commerce brands. Helps brands optimize product pages, generate marketing content, and track competitors.
+  language: en, tr
+  contact: billing@brandybee.ai
+  agent_permissions:
+    allowed:
+      - browse
+      - search
+      - view_brand_data
+      - generate_content
+      - view_competitive_analysis
+      - view_product_scores
+    requires_confirmation:
+      - create_brand (triggers paid AI analysis)
+      - approve_brand (triggers paid keyword + competitor research)
+      - delete_brand (permanent, deletes all associated data)
+      - publish_content
+      - connect_third_party (Printify, Gelato)
+    forbidden:
+      - bulk_scraping
+      - automated_account_creation
+      - automated_purchases
+
+authentication:
+  method: email + password OR Google OAuth
+  session_type: JWT with auto-refresh
+  expired_behavior: redirects to /login
+  state_persistence: backend workflow progress survives session expiry — log back in to resume
+  logout_clears: local storage and session tokens
+
+# ─────────────────────────────────────────────
+# SCREENS
+# ─────────────────────────────────────────────
+
+screens:
+  - id: login
+    path: /login
+    description: Sign in page with email/password fields and Google OAuth option.
+    key_elements:
+      - Email input (placeholder "you@example.com")
+      - Password input with Show/Hide toggle
+      - "Sign In" button
+      - "Continue with Google" button
+      - "Sign Up" link at top
+
+  - id: dashboard
+    path: /dashboard
+    description: Main overview showing brand profiles, health scores, and quick actions.
+    key_elements:
+      - Brand cards — one per brand, showing name, logo, health score
+      - "Add New Brand" button — opens brand creation flow
+      - Navigation sidebar — persistent across all screens
+      - Brand switcher — bottom of sidebar, changes active brand context for ALL features
+
+  - id: brand_workflow
+    path: /brand-workflow
+    description: Multi-step brand onboarding flow with sequential screens within a single URL.
+    notes:
+      - Steps progress automatically — do not navigate away during processing steps
+      - See flows.Create Brand Profile for the complete step sequence
+
+  - id: competitive_analysis
+    path: /competitive-analysis
+    description: Competitive landscape, search performance, keyword rankings, and AI search insights.
+    key_elements:
+      - Performance score card
+      - Priority actions — AI recommendations
+      - Search insights — AI summary (may still be loading, see async_actions.ai_summary)
+      - Keyword rankings table — searchable, sortable
+      - Category breakdown
+    notes:
+      - AI summary section shows loading spinner if still being generated — auto-updates when ready
+
+  - id: my_products
+    path: /my-products
+    description: Product catalog with page scores, filterable by category.
+
+  - id: generate_products
+    path: /generate-products
+    description: AI content generation for product descriptions, titles, meta tags.
+
+  - id: product_page_layouts
+    path: /product-page-layouts
+    description: Visual product page layout builder and optimizer.
+
+  - id: image_generator
+    path: /image-generator
+    description: AI product image generation and marketing poster creation.
+    key_elements:
+      - Product Studio tab — generate product images
+      - Poster Generator tab — create marketing posters
+
+  - id: print_on_demand
+    path: /print-on-demand
+    description: Print-on-demand integration with Printify and Gelato.
+
+  - id: settings
+    path: /settings
+    description: Account settings, plan management, dark mode, language preferences.
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+
+components:
+  - name: Navigation Sidebar
+    location: left side, persistent on all screens after login
+    description: Links to all main features. Brand switcher and dark mode toggle at bottom.
+
+  - name: Brand Switcher
+    location: bottom of sidebar
+    description: Shows currently active brand. Click to switch. ALL features operate on the selected brand.
+    important: Switching brands changes context for the entire app.
+
+  - name: Dark Mode Toggle
+    location: sidebar, bottom
+    description: Toggles light/dark theme. Persists across sessions.
+
+  - name: Confirmation Modal
+    description: Appears before some irreversible actions. Contains descriptive text, "Confirm" and "Cancel" buttons.
+
+# ─────────────────────────────────────────────
+# FLOWS
+# ─────────────────────────────────────────────
+
+flows:
+  - name: Create Brand Profile
+    description: Full onboarding flow for adding a new e-commerce brand.
+    total_duration: 5-8 minutes (mostly waiting for AI analysis)
+    steps:
+      - step: 1
+        action: Navigate to /dashboard, click "Add New Brand"
+        result: Brand creation flow begins
+      - step: 2
+        action: Select language (English or Turkish)
+      - step: 3
+        action: Select a plan (Free / Starter / Growth / Pro / Enterprise)
+        notes: Scroll horizontally to see all plans. Click "Select Plan", then "Continue to Brand Setup"
+      - step: 4
+        action: Fill brand form — Brand Name, Website URL, Country, then Language
+        notes: Language dropdown only populates AFTER country is selected
+        see: forms.brand_creation
+      - step: 5
+        action: Click "Analyze Your Brand"
+        see: async_actions.brand_analysis
+      - step: 6
+        action: Wait ~90-120 seconds for analysis. Progress bar and checklist update.
+        notes: This is a LOADING STATE, not an error. Do not navigate away.
+      - step: 7
+        action: Review brand analysis — verify summary, colors, categories, product pages
+      - step: 8
+        action: Click "Approve"
+        important: Triggers paid backend processes. Cannot be undone.
+        see: async_actions.keyword_fetch
+      - step: 9
+        action: Wait ~30-60 seconds for keywords to load
+      - step: 10
+        action: Select keywords to track (top 50 pre-selected, modify as needed)
+      - step: 11
+        action: Click "Continue" with selected keywords
+        important: Triggers competitive analysis — paid AI processing
+        see: async_actions.competitive_analysis
+      - step: 12
+        action: Wait ~2-5 minutes for competitive analysis
+        result: Auto-redirects to Competitive Analysis page
+
+  - name: View Competitive Analysis
+    steps:
+      - step: 1
+        action: Verify correct brand in Brand Switcher
+      - step: 2
+        action: Click "Competitive Analysis" in sidebar
+      - step: 3
+        notes: AI summary section may still be loading — auto-updates when ready
+
+  - name: Switch Active Brand
+    steps:
+      - step: 1
+        action: Click brand name at bottom of sidebar
+      - step: 2
+        action: Select desired brand from dropdown
+        result: All features now show data for selected brand
+
+# ─────────────────────────────────────────────
+# ASYNC ACTIONS
+# ─────────────────────────────────────────────
+
+async_actions:
+  - id: brand_analysis
+    trigger: "Analyze Your Brand" button
+    expected_duration: 90-120 seconds
+    result_location: same page — auto-redirects to review screen
+    progress_indicator: progress bar + percentage + 6-stage checklist
+    success_signal: all checklist items checked, page transitions to review screen
+    failure_signal: red error banner OR no progress for >120 seconds
+    safe_to_leave: true
+    safe_to_retry: false — will create duplicate analysis
+    stages:
+      - Analyzing website structure
+      - Discovering product pages
+      - Identifying brand identity
+      - Extracting brand colors
+      - Categorizing products
+      - Preparing brand summary
+
+  - id: keyword_fetch
+    trigger: "Approve" on review screen
+    expected_duration: 30-60 seconds
+    result_location: same page — transitions to keyword selection
+    progress_indicator: progress bar + 4-stage checklist
+    success_signal: keyword selection table appears
+    failure_signal: stuck for >90 seconds
+    safe_to_leave: true
+    safe_to_retry: false
+    stages:
+      - Fetching search volume data
+      - Analyzing keyword competition
+      - Processing SERP rankings
+      - Preparing keyword results
+
+  - id: competitive_analysis
+    trigger: "Continue" on keyword selection
+    expected_duration: 120-300 seconds
+    result_location: auto-redirects to /competitive-analysis
+    progress_indicator: 7-stage checklist
+    success_signal: all 7 stages complete, auto-redirect
+    failure_signal: stuck on same stage >180 seconds
+    safe_to_leave: true
+    safe_to_retry: false
+    stages:
+      - Starting competitive analysis
+      - Searching competitors
+      - Scoring competitive landscape
+      - Analyzing your pages
+      - Generating search insights
+      - Finalizing brand profile
+      - Analysis complete
+
+  - id: ai_summary
+    trigger: automatic during competitive analysis
+    expected_duration: 30-90 seconds after competitive analysis completes
+    result_location: Competitive Analysis page, "Search Insights" section
+    progress_indicator: spinner with "Your AI search summary is being generated"
+    success_signal: spinner replaced with summary text
+    safe_to_leave: true
+    notes: Page may load before summary is ready. Auto-updates — no refresh needed.
+
+  - id: content_generation
+    trigger: "Generate" on content screens
+    expected_duration: 5-15 seconds
+    result_location: same page, output panel
+    safe_to_leave: false — result will be lost
+    safe_to_retry: true
+
+  - id: image_generation
+    trigger: "Generate" on image generator
+    expected_duration: 15-45 seconds
+    result_location: same page, image gallery
+    safe_to_leave: true — images save to account
+    safe_to_retry: true
+
+# ─────────────────────────────────────────────
+# STATES
+# ─────────────────────────────────────────────
+
+states:
+  loading:
+    - id: brand_analysis_processing
+      appearance: progress bar + percentage + step checklist
+      meaning: AI is analyzing the brand website. Normal and expected.
+      expected_duration: 90-120 seconds
+      stuck_threshold: 120 seconds with no progress change
+      action: wait
+      recovery_if_stuck: refresh page — progress is persisted
+
+    - id: keyword_loading
+      appearance: progress bar with keyword-specific checklist
+      meaning: search volume and competition data being fetched
+      expected_duration: 30-60 seconds
+      action: wait
+
+    - id: competitive_analysis_generating
+      appearance: "Generating Competitive Analysis..." with 7-item checklist
+      meaning: full competitive analysis running
+      expected_duration: 2-5 minutes
+      action: wait — checklist items check off as stages complete
+
+    - id: ai_summary_loading
+      appearance: orange box with spinner, "Your AI search summary is being generated"
+      meaning: AI writing summary of search data
+      expected_duration: 30-90 seconds
+      action: wait — auto-updates. Rest of page is usable.
+
+  error:
+    - id: api_error
+      appearance: red banner at top of page
+      action: read message, retry or refresh
+
+    - id: form_validation
+      appearance: red text below form fields
+      action: correct highlighted fields
+
+    - id: session_expired
+      appearance: redirect to /login
+      action: log in again — backend work continues
+
+  empty:
+    - id: no_brands
+      appearance: empty dashboard with "Add your first brand" prompt
+      meaning: new account, normal initial state
+      action: click "Add New Brand"
+
+    - id: no_competitive_data
+      appearance: competitive analysis page with empty sections
+      meaning: analysis still running
+      action: wait 2-5 minutes, data loads automatically
+
+# ─────────────────────────────────────────────
+# FORMS
+# ─────────────────────────────────────────────
+
+forms:
+  - id: brand_creation
+    path: /brand-workflow
+    fields:
+      - name: brand_name
+        label: "Brand Name"
+        required: true
+        type: text
+      - name: website_url
+        label: "Website URL"
+        required: true
+        type: url
+        format: full URL including https://
+      - name: country
+        label: "Country"
+        required: true
+        type: dropdown
+      - name: language
+        label: "Language"
+        required: true
+        type: dropdown
+        depends_on: country
+    field_dependencies:
+      - language depends_on country — select country FIRST, then language populates
+      - "Analyze" button requires brand_name AND website_url
+    sequence: brand_name → website_url → country → language → "Analyze Your Brand"
+
+  - id: keyword_selection
+    path: /brand-workflow
+    fields:
+      - name: keyword_checkboxes
+        type: checkbox list
+        description: top 50 pre-selected, toggle individually or use Select/Deselect All
+      - name: custom_keywords
+        type: text input
+        description: add custom keywords, comma-separated, press "+" to add
+    notes: "Continue" button shows selected count (e.g., "Continue (50/50 keywords)")
+
+# ─────────────────────────────────────────────
+# IRREVERSIBLE ACTIONS
+# ─────────────────────────────────────────────
+
+irreversible_actions:
+  - action: "Analyze Your Brand"
+    consequence: triggers AI analysis, uses processing resources
+    confirmation_ui: none — single button click
+    undo: must delete brand and start over
+
+  - action: "Approve" on review screen
+    consequence: triggers paid keyword + competitor research
+    confirmation_ui: none — single button click
+    undo: not possible
+
+  - action: "Continue" on keyword selection
+    consequence: triggers paid competitive analysis
+    confirmation_ui: none — single button click
+    undo: not possible
+
+  - action: Delete Brand
+    consequence: permanently deletes brand and ALL associated data
+    confirmation_ui: confirmation modal
+    undo: not possible
+
+# ─────────────────────────────────────────────
+# ERROR RECOVERY
+# ─────────────────────────────────────────────
+
+error_recovery:
+  - symptom: progress bar stuck for >2 minutes
+    likely_cause: backend workflow error or timeout
+    recovery: refresh page — progress is persisted. If still stuck, check /dashboard.
+
+  - symptom: competitive analysis page shows no data
+    likely_cause: analysis still running
+    recovery: wait 2-5 minutes. Data loads automatically.
+
+  - symptom: AI summary spinner won't stop
+    likely_cause: summary generation failed
+    recovery: refresh after 5 minutes. Rest of competitive data is still valid.
+
+  - symptom: keyword selection shows 0 keywords
+    likely_cause: keyword fetch still running or failed
+    recovery: wait 60 seconds. If still empty, return to dashboard.
+
+  - symptom: unexpected redirect to login
+    likely_cause: session expired
+    recovery: log in again. Backend work continues — results available after login.
+
+# ─────────────────────────────────────────────
+# AGENT TIPS
+# ─────────────────────────────────────────────
+
+agent_tips:
+  - tip: "Progress bars use smooth animation — actual progress jumps in stages, bar catches up visually."
+  - tip: "Brand Switcher changes context for the ENTIRE app. Always verify correct brand before any action."
+  - tip: "After login with in-progress setup, app may auto-resume to last onboarding step."
+  - tip: "Plan cards may need horizontal scrolling — not all visible at once."
+  - tip: "The 'Approve' button has NO confirmation modal despite triggering expensive operations."
+  - tip: "Competitive Analysis page loads progressively — AI summary is typically last to appear."
+  - tip: "Turkish language mode changes all UI labels AND AI content generation language."
